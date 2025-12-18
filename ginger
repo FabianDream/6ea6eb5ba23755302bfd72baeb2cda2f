@@ -1,0 +1,340 @@
+print("Hello!!!!")
+
+local Players = game:GetService("Players")
+local Interiors = workspace:WaitForChild("Interiors")
+local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local mainMap = Interiors:WaitForChild("MainMap!Christmas")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- // CONFIGURATION DEFAULTS \\ --
+getgenv().g_autofarmgingerbread = false 
+getgenv().g_autocollect = true 
+local webhookUrl = ""
+
+local visited = {}
+local current = nil
+local pickupStartTime = 0 
+local didAutoCollectThisEmpty = false
+
+-- // CURRENCY TRACKING VARIABLES \\ --
+local startCurrency = nil 
+local currentCurrencyValue = 0
+local gainedCurrency = 0
+
+-- // TIME TRACKING VARIABLES \\ --
+local startTime = tick() -- Records the exact time the script loaded
+
+local collectCFrame = CFrame.new(
+    -286.743164, 28.8830128, -1625.48047,
+    -0.500477076, 0.244971365, -0.830368519,
+    0.00281524379, 0.959587574, 0.28139618,
+    0.865745246, 0.138494655, -0.480941236
+)
+
+-- // HELPER FUNCTIONS \\ --
+local function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+-- // GUI CREATION \\ --
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local ToggleButton = Instance.new("TextButton")
+local WebhookInput = Instance.new("TextBox")
+local StatsFrame = Instance.new("Frame")
+local StatCurrent = Instance.new("TextLabel")
+local StatSession = Instance.new("TextLabel")
+local StatTime = Instance.new("TextLabel") -- New Label
+local UICorner = Instance.new("UICorner")
+
+-- Protect GUI
+if syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+elseif gethui then
+    ScreenGui.Parent = gethui()
+else
+    ScreenGui.Parent = CoreGui
+end
+
+ScreenGui.Name = "GingerbreadFarmGUI"
+ScreenGui.ResetOnSpawn = false
+
+-- Main Background
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -135) -- Adjusted height pos
+MainFrame.Size = UDim2.new(0, 300, 0, 270) -- Increased size to fit new stat
+MainFrame.Active = true
+MainFrame.Draggable = true 
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+
+-- Title
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(255, 140, 0) 
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "Gingerbread Auto-Farm"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 8)
+
+-- Toggle Button
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = MainFrame
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) 
+ToggleButton.Position = UDim2.new(0.1, 0, 0.18, 0)
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 40)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "START FARMING"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 18
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+
+-- Webhook Input
+WebhookInput.Name = "WebhookInput"
+WebhookInput.Parent = MainFrame
+WebhookInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+WebhookInput.Position = UDim2.new(0.1, 0, 0.38, 0)
+WebhookInput.Size = UDim2.new(0.8, 0, 0, 30)
+WebhookInput.Font = Enum.Font.Gotham
+WebhookInput.PlaceholderText = "Paste Webhook URL Here"
+WebhookInput.Text = webhookUrl 
+WebhookInput.TextColor3 = Color3.fromRGB(200, 200, 200)
+WebhookInput.TextSize = 12
+WebhookInput.TextScaled = true
+Instance.new("UICorner", WebhookInput).CornerRadius = UDim.new(0, 6)
+
+-- Stats Frame
+StatsFrame.Name = "StatsFrame"
+StatsFrame.Parent = MainFrame
+StatsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+StatsFrame.Position = UDim2.new(0.1, 0, 0.55, 0)
+StatsFrame.Size = UDim2.new(0.8, 0, 0, 110) -- Increased height for 3rd label
+Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 6)
+
+-- Stat: Current
+StatCurrent.Name = "StatCurrent"
+StatCurrent.Parent = StatsFrame
+StatCurrent.BackgroundTransparency = 1
+StatCurrent.Position = UDim2.new(0, 10, 0, 10)
+StatCurrent.Size = UDim2.new(1, -20, 0, 25)
+StatCurrent.Font = Enum.Font.Gotham
+StatCurrent.Text = "Current: N/A"
+StatCurrent.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatCurrent.TextXAlignment = Enum.TextXAlignment.Left
+StatCurrent.TextSize = 14
+
+-- Stat: Session
+StatSession.Name = "StatSession"
+StatSession.Parent = StatsFrame
+StatSession.BackgroundTransparency = 1
+StatSession.Position = UDim2.new(0, 10, 0, 40)
+StatSession.Size = UDim2.new(1, -20, 0, 25)
+StatSession.Font = Enum.Font.Gotham
+StatSession.Text = "Gained: 0"
+StatSession.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatSession.TextXAlignment = Enum.TextXAlignment.Left
+StatSession.TextSize = 14
+
+-- Stat: Time
+StatTime.Name = "StatTime"
+StatTime.Parent = StatsFrame
+StatTime.BackgroundTransparency = 1
+StatTime.Position = UDim2.new(0, 10, 0, 70)
+StatTime.Size = UDim2.new(1, -20, 0, 25)
+StatTime.Font = Enum.Font.Gotham
+StatTime.Text = "Time: 00:00:00"
+StatTime.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatTime.TextXAlignment = Enum.TextXAlignment.Left
+StatTime.TextSize = 14
+
+-- // GUI LOGIC \\ --
+
+ToggleButton.MouseButton1Click:Connect(function()
+    getgenv().g_autofarmgingerbread = not getgenv().g_autofarmgingerbread
+    
+    if getgenv().g_autofarmgingerbread then
+        ToggleButton.Text = "STOP FARMING"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) 
+    else
+        ToggleButton.Text = "START FARMING"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) 
+    end
+end)
+
+WebhookInput.FocusLost:Connect(function()
+    if WebhookInput.Text ~= "" then
+        webhookUrl = WebhookInput.Text
+        print("Webhook URL updated!")
+    end
+end)
+
+
+-- // ANTI-AFK \\ --
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- // CHARACTER HANDLING \\ --
+player.CharacterAdded:Connect(function(char)
+    character = char
+    hrp = character:WaitForChild("HumanoidRootPart")
+end)
+
+local function getCFrame(obj)
+    if not obj then return nil end
+    if obj:IsA("Model") then
+        local pp = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+        if pp then return pp.CFrame end
+    elseif obj:IsA("BasePart") then
+        return obj.CFrame
+    end
+    return nil
+end
+
+local function rescanForNext()
+    for _, d in ipairs(mainMap:GetDescendants()) do
+        if d.Name == "GingerbreadRig" then
+            local gbm = d:FindFirstChild("GingerbreadMan", true)
+            if gbm and gbm.Parent and not visited[gbm] then
+                return gbm
+            end
+        end
+    end
+    return nil
+end
+
+-- // CURRENCY HELPERS \\ --
+
+local function parseCurrencyString(str)
+    if not str or str == "N/A" then return nil end
+    local cleanStr = string.gsub(str, "%D", "")
+    return tonumber(cleanStr)
+end
+
+local function getCurrencyText()
+    local val = "N/A"
+    pcall(function()
+        val = player.PlayerGui.AltCurrencyIndicatorApp.CurrencyIndicator.Container.Amount.Text
+    end)
+    return val
+end
+
+-- // WEBHOOK SENDER \\ --
+local function sendWebhook(amountText, gainedText)
+    if not webhookUrl or webhookUrl == "" then return end
+    
+    local timeElapsed = tick() - startTime
+    local timeString = formatTime(timeElapsed)
+
+    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    
+    if requestFunc then
+        requestFunc({
+            Url = webhookUrl,
+            Method = "POST", 
+            Headers = { ['Content-Type'] = 'application/json' },
+            Body = HttpService:JSONEncode({
+                ['content'] = "",
+                ['embeds'] = {{
+                    ["title"] = "Gingerbread Status",
+                    ["description"] = "Currency & Time Update",
+                    ["type"] = "rich",
+                    ["color"] = tonumber(0xffA500), 
+                    ["fields"] = {
+                        { ["name"] = "Current Total", ["value"] = tostring(amountText), ["inline"] = true },
+                        { ["name"] = "Gained (Session)", ["value"] = tostring(gainedText), ["inline"] = true },
+                        { ["name"] = "Time Elapsed", ["value"] = timeString, ["inline"] = false }
+                    },
+                    ["footer"] = { ["text"] = "Auto-Farm Script" }
+                }}
+            })
+        })
+    end
+end
+
+-- Webhook Loop
+task.spawn(function()
+    while true do
+        task.wait(300) -- Send every 5 minutes
+        if getgenv().g_autofarmgingerbread then
+            sendWebhook(getCurrencyText(), gainedCurrency)
+        end
+    end
+end)
+
+-- // MAIN LOOP \\ --
+while true do
+    -- 1. Get raw string from GUI
+    local currentRawText = getCurrencyText()
+    
+    -- 2. Convert to number for math
+    local currentNum = parseCurrencyString(currentRawText)
+
+    -- 3. Logic to handle Stats
+    if currentNum then
+        if startCurrency == nil then
+            startCurrency = currentNum
+        end
+        currentCurrencyValue = currentNum
+        gainedCurrency = currentCurrencyValue - startCurrency
+    end
+
+    -- 4. Calculate Time
+    local currentTimeElapsed = tick() - startTime
+
+    -- 5. Update GUI Labels
+    StatCurrent.Text = "Current: " .. currentRawText
+    StatSession.Text = "Gained: " .. tostring(gainedCurrency)
+    StatTime.Text = "Time: " .. formatTime(currentTimeElapsed)
+
+    -- 6. Farming Logic
+    if getgenv().g_autofarmgingerbread then
+        
+        if current and (tick() - pickupStartTime > 5) then
+            current = nil
+        end
+
+        if current and (not current.Parent) then
+            current = nil
+        end
+
+        if not current then
+            local nextTarget = rescanForNext()
+
+            if nextTarget then
+                current = nextTarget
+                visited[current] = true 
+                pickupStartTime = tick()
+                
+                didAutoCollectThisEmpty = false
+
+                local cf = getCFrame(current)
+                if cf and hrp then
+                    hrp.CFrame = cf
+                end
+            else
+                if getgenv().g_autocollect and not didAutoCollectThisEmpty and hrp then
+                    hrp.CFrame = collectCFrame
+                    didAutoCollectThisEmpty = true
+                end
+            end
+        end
+    end
+
+    task.wait(0.1)
+end
