@@ -68,14 +68,16 @@ local function getInTrain()
 end
 
 local function jumpOutTrain()
+    -- Fire the API to exit train seat
     pcall(function()
-        local api = game:GetService("ReplicatedStorage"):FindFirstChild("API")
-        if api then
-            local remote = api:FindFirstChild("QuFHMVlfXdWIUvHEYzaIcOd")
-            if remote then
-                remote:FireServer()
-            end
-        end
+        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd"):FireServer()
+    end)
+    -- Also press spacebar to physically jump out
+    task.wait(0.2)
+    pcall(function()
+        VirtualUser:SetKeyDown(Enum.KeyCode.Space)
+        task.wait(0.1)
+        VirtualUser:SetKeyUp(Enum.KeyCode.Space)
     end)
 end
 
@@ -435,6 +437,7 @@ while true do
                     pickupStartTime = tick()
                     
                     didAutoCollectThisEmpty = false
+                    currentSource = "collection" -- Track as collection when picking up gingerbread
 
                     local cf = getCFrame(current)
                     if cf and hrp then
