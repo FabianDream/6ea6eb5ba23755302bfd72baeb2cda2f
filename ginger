@@ -68,9 +68,15 @@ local function getInTrain()
 end
 
 local function jumpOutTrain()
-    -- Fire the API to exit train seat
+    -- Fire the API to exit train seat (with timeout to prevent infinite yield)
     pcall(function()
-        game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd"):FireServer()
+        local api = game:GetService("ReplicatedStorage"):WaitForChild("API", 5)
+        if api then
+            local remote = api:WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd", 5)
+            if remote then
+                remote:FireServer()
+            end
+        end
     end)
     -- Also press spacebar to physically jump out
     task.wait(0.2)
