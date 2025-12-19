@@ -320,7 +320,6 @@ local function sendWebhook(amountText, gainedText)
                     ["fields"] = {
                         { ["name"] = "Current Total", ["value"] = tostring(amountText), ["inline"] = true },
                         { ["name"] = "Gained (Session)", ["value"] = tostring(gainedText), ["inline"] = true },
-                        { ["name"] = "\u200b", ["value"] = "\u200b", ["inline"] = false }, -- Spacer
                         { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
                         { ["name"] = "🚂 From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
                         { ["name"] = "Time Elapsed", ["value"] = timeString, ["inline"] = false }
