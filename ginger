@@ -26,6 +26,12 @@ local didAutoCollectThisEmpty = false
 local startCurrency = nil 
 local currentCurrencyValue = 0
 local gainedCurrency = 0
+local lastTrackedCurrency = nil -- For detecting currency changes
+
+-- // SOURCE TRACKING VARIABLES \\ --
+local gainedFromCollection = 0
+local gainedFromTrain = 0
+local currentSource = "none" -- "collection", "train", or "none"
 
 -- // TIME TRACKING VARIABLES \\ --
 local startTime = tick() -- Records the exact time the script loaded
@@ -36,6 +42,36 @@ local collectCFrame = CFrame.new(
     0.00281524379, 0.959587574, 0.28139618,
     0.865745246, 0.138494655, -0.480941236
 )
+
+-- // TRAIN RIDING STATE \\ --
+local isOnTrain = false
+local trainBoardTime = 0
+
+-- // TRAIN FUNCTIONS \\ --
+local function getInTrain()
+    local args = {
+        {
+            carriage = workspace:WaitForChild("WinterTrainSeats"):WaitForChild("Seat")
+        }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("adoptme_new_net"):WaitForChild("adoptme_legacy_shared.ContentPacks.Winter2025.Game.Train.WinterTrainNet:7"):FireServer(unpack(args))
+end
+
+local function jumpOutTrain()
+    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd"):FireServer()
+end
+
+local function hasGingerbreadAvailable()
+    for _, d in ipairs(mainMap:GetDescendants()) do
+        if d.Name == "GingerbreadRig" then
+            local gbm = d:FindFirstChild("GingerbreadMan", true)
+            if gbm and gbm.Parent then
+                return true
+            end
+        end
+    end
+    return false
+end
 
 -- // HELPER FUNCTIONS \\ --
 local function formatTime(seconds)
@@ -54,7 +90,9 @@ local WebhookInput = Instance.new("TextBox")
 local StatsFrame = Instance.new("Frame")
 local StatCurrent = Instance.new("TextLabel")
 local StatSession = Instance.new("TextLabel")
-local StatTime = Instance.new("TextLabel") -- New Label
+local StatFromCollection = Instance.new("TextLabel")
+local StatFromTrain = Instance.new("TextLabel")
+local StatTime = Instance.new("TextLabel")
 local UICorner = Instance.new("UICorner")
 
 -- Protect GUI
@@ -74,8 +112,8 @@ ScreenGui.ResetOnSpawn = false
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -135) -- Adjusted height pos
-MainFrame.Size = UDim2.new(0, 300, 0, 270) -- Increased size to fit new stat
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175) -- Adjusted height pos
+MainFrame.Size = UDim2.new(0, 300, 0, 350) -- Increased size for more stats
 MainFrame.Active = true
 MainFrame.Draggable = true 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
@@ -121,8 +159,8 @@ Instance.new("UICorner", WebhookInput).CornerRadius = UDim.new(0, 6)
 StatsFrame.Name = "StatsFrame"
 StatsFrame.Parent = MainFrame
 StatsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-StatsFrame.Position = UDim2.new(0.1, 0, 0.55, 0)
-StatsFrame.Size = UDim2.new(0.8, 0, 0, 110) -- Increased height for 3rd label
+StatsFrame.Position = UDim2.new(0.1, 0, 0.42, 0)
+StatsFrame.Size = UDim2.new(0.8, 0, 0, 170) -- Increased height for all stats
 Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 6)
 
 -- Stat: Current
@@ -149,11 +187,35 @@ StatSession.TextColor3 = Color3.fromRGB(255, 255, 255)
 StatSession.TextXAlignment = Enum.TextXAlignment.Left
 StatSession.TextSize = 14
 
+-- Stat: From Collection
+StatFromCollection.Name = "StatFromCollection"
+StatFromCollection.Parent = StatsFrame
+StatFromCollection.BackgroundTransparency = 1
+StatFromCollection.Position = UDim2.new(0, 10, 0, 70)
+StatFromCollection.Size = UDim2.new(1, -20, 0, 25)
+StatFromCollection.Font = Enum.Font.Gotham
+StatFromCollection.Text = "From Collection: 0"
+StatFromCollection.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light green
+StatFromCollection.TextXAlignment = Enum.TextXAlignment.Left
+StatFromCollection.TextSize = 14
+
+-- Stat: From Train
+StatFromTrain.Name = "StatFromTrain"
+StatFromTrain.Parent = StatsFrame
+StatFromTrain.BackgroundTransparency = 1
+StatFromTrain.Position = UDim2.new(0, 10, 0, 100)
+StatFromTrain.Size = UDim2.new(1, -20, 0, 25)
+StatFromTrain.Font = Enum.Font.Gotham
+StatFromTrain.Text = "From Train: 0"
+StatFromTrain.TextColor3 = Color3.fromRGB(135, 206, 250) -- Light blue
+StatFromTrain.TextXAlignment = Enum.TextXAlignment.Left
+StatFromTrain.TextSize = 14
+
 -- Stat: Time
 StatTime.Name = "StatTime"
 StatTime.Parent = StatsFrame
 StatTime.BackgroundTransparency = 1
-StatTime.Position = UDim2.new(0, 10, 0, 70)
+StatTime.Position = UDim2.new(0, 10, 0, 130)
 StatTime.Size = UDim2.new(1, -20, 0, 25)
 StatTime.Font = Enum.Font.Gotham
 StatTime.Text = "Time: 00:00:00"
@@ -258,6 +320,9 @@ local function sendWebhook(amountText, gainedText)
                     ["fields"] = {
                         { ["name"] = "Current Total", ["value"] = tostring(amountText), ["inline"] = true },
                         { ["name"] = "Gained (Session)", ["value"] = tostring(gainedText), ["inline"] = true },
+                        { ["name"] = "\u200b", ["value"] = "\u200b", ["inline"] = false }, -- Spacer
+                        { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
+                        { ["name"] = "🚂 From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
                         { ["name"] = "Time Elapsed", ["value"] = timeString, ["inline"] = false }
                     },
                     ["footer"] = { ["text"] = "Auto-Farm Script" }
@@ -285,11 +350,24 @@ while true do
     -- 2. Convert to number for math
     local currentNum = parseCurrencyString(currentRawText)
 
-    -- 3. Logic to handle Stats
+    -- 3. Logic to handle Stats and Source Tracking
     if currentNum then
         if startCurrency == nil then
             startCurrency = currentNum
+            lastTrackedCurrency = currentNum
         end
+        
+        -- Detect currency change and attribute to source
+        if lastTrackedCurrency and currentNum > lastTrackedCurrency then
+            local gained = currentNum - lastTrackedCurrency
+            if currentSource == "collection" then
+                gainedFromCollection = gainedFromCollection + gained
+            elseif currentSource == "train" then
+                gainedFromTrain = gainedFromTrain + gained
+            end
+        end
+        lastTrackedCurrency = currentNum
+        
         currentCurrencyValue = currentNum
         gainedCurrency = currentCurrencyValue - startCurrency
     end
@@ -300,39 +378,75 @@ while true do
     -- 5. Update GUI Labels
     StatCurrent.Text = "Current: " .. currentRawText
     StatSession.Text = "Gained: " .. tostring(gainedCurrency)
+    StatFromCollection.Text = "From Collection: " .. tostring(gainedFromCollection)
+    StatFromTrain.Text = "From Train: " .. tostring(gainedFromTrain)
     StatTime.Text = "Time: " .. formatTime(currentTimeElapsed)
 
     -- 6. Farming Logic
     if getgenv().g_autofarmgingerbread then
         
-        if current and (tick() - pickupStartTime > 5) then
-            current = nil
-        end
-
-        if current and (not current.Parent) then
-            current = nil
-        end
-
-        if not current then
-            local nextTarget = rescanForNext()
-
-            if nextTarget then
-                current = nextTarget
-                visited[current] = true 
-                pickupStartTime = tick()
-                
+        -- If on train, check for gingerbread respawn
+        if isOnTrain then
+            currentSource = "train" -- Track that we're earning from train
+            if hasGingerbreadAvailable() then
+                -- Gingerbread is back! Jump out of train and reset
+                jumpOutTrain()
+                isOnTrain = false
+                currentSource = "none"
+                visited = {} -- Reset visited table for new cycle
+                current = nil
                 didAutoCollectThisEmpty = false
+                print("[Train] Gingerbread respawned! Jumping out to farm.")
+                task.wait(1) -- Give a moment after jumping out
+            end
+        else
+            -- Normal farming logic
+            if current and (tick() - pickupStartTime > 5) then
+                current = nil
+            end
 
-                local cf = getCFrame(current)
-                if cf and hrp then
-                    hrp.CFrame = cf
-                end
-            else
-                if getgenv().g_autocollect and not didAutoCollectThisEmpty and hrp then
-                    hrp.CFrame = collectCFrame
-                    didAutoCollectThisEmpty = true
+            if current and (not current.Parent) then
+                current = nil
+            end
+
+            if not current then
+                local nextTarget = rescanForNext()
+
+                if nextTarget then
+                    current = nextTarget
+                    visited[current] = true 
+                    pickupStartTime = tick()
+                    
+                    didAutoCollectThisEmpty = false
+
+                    local cf = getCFrame(current)
+                    if cf and hrp then
+                        hrp.CFrame = cf
+                    end
+                else
+                    -- No gingerbread available
+                    if getgenv().g_autocollect and not didAutoCollectThisEmpty and hrp then
+                        -- Step 1: Teleport to collection station
+                        currentSource = "collection" -- Track that we're earning from collection
+                        hrp.CFrame = collectCFrame
+                        didAutoCollectThisEmpty = true
+                        print("[Collect] Teleported to collection station.")
+                        task.wait(2) -- Wait for collection to happen
+                    elseif didAutoCollectThisEmpty and not isOnTrain then
+                        -- Step 2: Get on the train after collecting
+                        print("[Train] Getting on the Choo Choo Train!")
+                        getInTrain()
+                        isOnTrain = true
+                        trainBoardTime = tick()
+                    end
                 end
             end
+        end
+    else
+        -- If farming is disabled and we're on the train, get off
+        if isOnTrain then
+            jumpOutTrain()
+            isOnTrain = false
         end
     end
 
