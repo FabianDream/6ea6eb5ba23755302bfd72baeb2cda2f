@@ -68,46 +68,26 @@ local function getInTrain()
 end
 
 local function jumpOutTrain()
-    print("[Train] Attempting to jump out...")
-    
-    -- Method 1: Fire the API
-    pcall(function()
-        local api = game:GetService("ReplicatedStorage"):WaitForChild("API", 5)
-        if api then
-            local remote = api:WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd", 5)
-            if remote then
-                remote:FireServer()
-                print("[Train] Fired exit remote")
-            end
-        end
-    end)
+    print("[Train] Jumping out...")
 
-    task.wait(0.2)
-    
-    -- Method 2: Force Sit property logic
+    -- Method 1: Force Sit property (Confirmed working)
     pcall(function()
         if character and character:FindFirstChild("Humanoid") then
             character.Humanoid.Sit = false
             character.Humanoid.Jump = true
-            print("[Train] Set Sit=false and Jump=true")
         end
     end)
     
-    task.wait(0.2)
-
-    -- Method 3: VirtualUser Input (Try standard keypress if SetKeyDown fails)
-    pcall(function()
-        VirtualUser:SetKeyDown("Space")
-        task.wait(0.1)
-        VirtualUser:SetKeyUp("Space")
-    end)
-    
-    -- Method 4: Force Teleport Upwards (Last Resort)
+    -- Wait briefly to see if it worked
     task.wait(0.5)
+
+    -- Method 2: Force Teleport Upwards (Fallback if still sitting)
     pcall(function()
-        if hrp and character.Humanoid.Sit then
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 5, 0)
-            print("[Train] Force teleported up")
+        if character and character:FindFirstChild("Humanoid") and character.Humanoid.Sit then
+            print("[Train] Stuck in seat? Force teleporting up.")
+            if hrp then
+                hrp.CFrame = hrp.CFrame + Vector3.new(0, 5, 0)
+            end
         end
     end)
 end
