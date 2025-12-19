@@ -333,10 +333,11 @@ local function sendWebhook(amountText, gainedText)
             ["description"] = "Running on **Adopt Me!**",
             ["color"] = tonumber(0xFFA500), -- Orange
             ["thumbnail"] = {
-                ["url"] = "https://media.tenor.com/hll77RMwBAIAAAAe/susdog.png" -- Generic Adopt Me or Gingerbread icon
+                ["url"] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png" -- Generic Adopt Me or Gingerbread icon
             },
             ["fields"] = {
-                { ["name"] = "💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
+                { ["name"] = "� Username", ["value"] = player.Name, ["inline"] = true },
+                { ["name"] = "�💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
                 { ["name"] = "📈 Gained Session", ["value"] = "`+" .. tostring(gainedText) .. "`", ["inline"] = true },
                 { ["name"] = "", ["value"] = "", ["inline"] = false }, -- Empty line force
                 { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
@@ -356,7 +357,7 @@ local function sendWebhook(amountText, gainedText)
                 Headers = { ['Content-Type'] = 'application/json' },
                 Body = HttpService:JSONEncode({
                     ['username'] = "Gingerbread Bot",
-                    ['avatar_url'] = "https://t3.ftcdn.net/jpg/02/74/25/68/360_F_274256881_WSeCn3Iw8yFIU8T6z71aDjXHfAdtc5iy.jpg",
+                    ['avatar_url'] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png",
                     ['embeds'] = { embedData }
                 })
             })
