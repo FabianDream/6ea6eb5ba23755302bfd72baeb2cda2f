@@ -49,16 +49,34 @@ local trainBoardTime = 0
 
 -- // TRAIN FUNCTIONS \\ --
 local function getInTrain()
-    local args = {
-        {
-            carriage = workspace:WaitForChild("WinterTrainSeats"):WaitForChild("Seat")
-        }
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("adoptme_new_net"):WaitForChild("adoptme_legacy_shared.ContentPacks.Winter2025.Game.Train.WinterTrainNet:7"):FireServer(unpack(args))
+    pcall(function()
+        local winterSeats = workspace:FindFirstChild("WinterTrainSeats")
+        if winterSeats then
+            local seat = winterSeats:FindFirstChild("Seat")
+            if seat then
+                local args = {{ carriage = seat }}
+                local adoptmeNet = game:GetService("ReplicatedStorage"):FindFirstChild("adoptme_new_net")
+                if adoptmeNet then
+                    local trainNet = adoptmeNet:FindFirstChild("adoptme_legacy_shared.ContentPacks.Winter2025.Game.Train.WinterTrainNet:7")
+                    if trainNet then
+                        trainNet:FireServer(unpack(args))
+                    end
+                end
+            end
+        end
+    end)
 end
 
 local function jumpOutTrain()
-    game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("QuFHMVlfXdWIUvHEYzaIcOd"):FireServer()
+    pcall(function()
+        local api = game:GetService("ReplicatedStorage"):FindFirstChild("API")
+        if api then
+            local remote = api:FindFirstChild("QuFHMVlfXdWIUvHEYzaIcOd")
+            if remote then
+                remote:FireServer()
+            end
+        end
+    end)
 end
 
 local function hasGingerbreadAvailable()
