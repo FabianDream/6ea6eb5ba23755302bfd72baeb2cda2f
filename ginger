@@ -81,9 +81,9 @@ local function jumpOutTrain()
     -- Also press spacebar to physically jump out
     task.wait(0.2)
     pcall(function()
-        VirtualUser:SetKeyDown(Enum.KeyCode.Space)
+        VirtualUser:SetKeyDown("Space")
         task.wait(0.1)
-        VirtualUser:SetKeyUp(Enum.KeyCode.Space)
+        VirtualUser:SetKeyUp("Space")
     end)
 end
 
