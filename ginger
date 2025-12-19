@@ -120,6 +120,8 @@ local StatFromCollection = Instance.new("TextLabel")
 local StatFromTrain = Instance.new("TextLabel")
 local StatTime = Instance.new("TextLabel")
 local UICorner = Instance.new("UICorner")
+local UIStroke = Instance.new("UIStroke") -- Add stroke for outline
+local TitleCorner = Instance.new("UICorner")
 
 -- Protect GUI
 if syn and syn.protect_gui then
@@ -134,132 +136,120 @@ end
 ScreenGui.Name = "GingerbreadFarmGUI"
 ScreenGui.ResetOnSpawn = false
 
+-- Constants for Theme
+local THEME = {
+    Background = Color3.fromRGB(25, 25, 30),
+    Accent = Color3.fromRGB(255, 140, 0), -- Gingerbread Orange
+    Secondary = Color3.fromRGB(40, 40, 45),
+    Text = Color3.fromRGB(240, 240, 240),
+    Success = Color3.fromRGB(100, 255, 100),
+    Fail = Color3.fromRGB(255, 100, 100)
+}
+
 -- Main Background
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175) -- Adjusted height pos
-MainFrame.Size = UDim2.new(0, 300, 0, 350) -- Increased size for more stats
+MainFrame.BackgroundColor3 = THEME.Background
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 300, 0, 360)
 MainFrame.Active = true
 MainFrame.Draggable = true 
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+UIStroke.Parent = MainFrame
+UIStroke.Color = THEME.Accent
+UIStroke.Thickness = 2
 
 -- Title
 Title.Name = "Title"
 Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(255, 140, 0) 
-Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = THEME.Accent
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "Gingerbread Auto-Farm"
+Title.Text = "🍪 GINGERBREAD FARM 🍪"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 8)
+Title.TextSize = 18
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = Title
+
+-- Fix bottom corners of title to be straight (cover with a frame or just ignore for simple look)
+-- Let's just keep it rounded, looks bubbly.
 
 -- Toggle Button
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Parent = MainFrame
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) 
-ToggleButton.Position = UDim2.new(0.1, 0, 0.18, 0)
-ToggleButton.Size = UDim2.new(0.8, 0, 0, 40)
-ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.BackgroundColor3 = THEME.Fail -- Start red
+ToggleButton.Position = UDim2.new(0.1, 0, 0.15, 0)
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 45)
+ToggleButton.Font = Enum.Font.GothamBlack
 ToggleButton.Text = "START FARMING"
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 18
-Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+ToggleButton.TextSize = 20
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 8)
 
 -- Webhook Input
 WebhookInput.Name = "WebhookInput"
 WebhookInput.Parent = MainFrame
-WebhookInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-WebhookInput.Position = UDim2.new(0.1, 0, 0.38, 0)
-WebhookInput.Size = UDim2.new(0.8, 0, 0, 30)
+WebhookInput.BackgroundColor3 = THEME.Secondary
+WebhookInput.Position = UDim2.new(0.1, 0, 0.32, 0)
+WebhookInput.Size = UDim2.new(0.8, 0, 0, 35)
 WebhookInput.Font = Enum.Font.Gotham
-WebhookInput.PlaceholderText = "Paste Webhook URL Here"
+WebhookInput.PlaceholderText = "Paste Discord Webhook URL..."
 WebhookInput.Text = webhookUrl 
-WebhookInput.TextColor3 = Color3.fromRGB(200, 200, 200)
+WebhookInput.TextColor3 = THEME.Text
+WebhookInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 WebhookInput.TextSize = 12
-WebhookInput.TextScaled = true
-Instance.new("UICorner", WebhookInput).CornerRadius = UDim.new(0, 6)
+WebhookInput.TextScaled = false
+Instance.new("UICorner", WebhookInput).CornerRadius = UDim.new(0, 8)
+local WebhookStroke = Instance.new("UIStroke")
+WebhookStroke.Parent = WebhookInput
+WebhookStroke.Color = Color3.fromRGB(60, 60, 60)
+WebhookStroke.Thickness = 1
 
 -- Stats Frame
 StatsFrame.Name = "StatsFrame"
 StatsFrame.Parent = MainFrame
-StatsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-StatsFrame.Position = UDim2.new(0.1, 0, 0.42, 0)
-StatsFrame.Size = UDim2.new(0.8, 0, 0, 170) -- Increased height for all stats
-Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 6)
+StatsFrame.BackgroundColor3 = THEME.Secondary
+StatsFrame.Position = UDim2.new(0.05, 0, 0.45, 0)
+StatsFrame.Size = UDim2.new(0.9, 0, 0, 180) 
+Instance.new("UICorner", StatsFrame).CornerRadius = UDim.new(0, 8)
+local StatsStroke = Instance.new("UIStroke")
+StatsStroke.Parent = StatsFrame
+StatsStroke.Color = Color3.fromRGB(60, 60, 60)
+StatsStroke.Thickness = 1
 
--- Stat: Current
-StatCurrent.Name = "StatCurrent"
-StatCurrent.Parent = StatsFrame
-StatCurrent.BackgroundTransparency = 1
-StatCurrent.Position = UDim2.new(0, 10, 0, 10)
-StatCurrent.Size = UDim2.new(1, -20, 0, 25)
-StatCurrent.Font = Enum.Font.Gotham
-StatCurrent.Text = "Current: N/A"
-StatCurrent.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatCurrent.TextXAlignment = Enum.TextXAlignment.Left
-StatCurrent.TextSize = 14
+-- Stats Config
+local function createStatLabel(name, text, posY, color)
+    local label = Instance.new("TextLabel")
+    label.Name = name
+    label.Parent = StatsFrame
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0.05, 0, 0, posY)
+    label.Size = UDim2.new(0.9, 0, 0, 25)
+    label.Font = Enum.Font.GothamSemibold
+    label.Text = text
+    label.TextColor3 = color or THEME.Text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextSize = 14
+    return label
+end
 
--- Stat: Session
-StatSession.Name = "StatSession"
-StatSession.Parent = StatsFrame
-StatSession.BackgroundTransparency = 1
-StatSession.Position = UDim2.new(0, 10, 0, 40)
-StatSession.Size = UDim2.new(1, -20, 0, 25)
-StatSession.Font = Enum.Font.Gotham
-StatSession.Text = "Gained: 0"
-StatSession.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatSession.TextXAlignment = Enum.TextXAlignment.Left
-StatSession.TextSize = 14
+StatCurrent = createStatLabel("StatCurrent", "💰 Current: N/A", 10, Color3.fromRGB(255, 215, 0))
+StatSession = createStatLabel("StatSession", "📈 Gained: 0", 40, Color3.fromRGB(0, 255, 127))
+StatFromCollection = createStatLabel("StatFromCollection", "🍪 From Collection: 0", 70, Color3.fromRGB(255, 160, 122))
+StatFromTrain = createStatLabel("StatFromTrain", "🚂 From Train: 0", 100, Color3.fromRGB(135, 206, 250))
+StatTime = createStatLabel("StatTime", "⏱ Time: 00:00:00", 140, Color3.fromRGB(200, 200, 200))
 
--- Stat: From Collection
-StatFromCollection.Name = "StatFromCollection"
-StatFromCollection.Parent = StatsFrame
-StatFromCollection.BackgroundTransparency = 1
-StatFromCollection.Position = UDim2.new(0, 10, 0, 70)
-StatFromCollection.Size = UDim2.new(1, -20, 0, 25)
-StatFromCollection.Font = Enum.Font.Gotham
-StatFromCollection.Text = "From Collection: 0"
-StatFromCollection.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light green
-StatFromCollection.TextXAlignment = Enum.TextXAlignment.Left
-StatFromCollection.TextSize = 14
-
--- Stat: From Train
-StatFromTrain.Name = "StatFromTrain"
-StatFromTrain.Parent = StatsFrame
-StatFromTrain.BackgroundTransparency = 1
-StatFromTrain.Position = UDim2.new(0, 10, 0, 100)
-StatFromTrain.Size = UDim2.new(1, -20, 0, 25)
-StatFromTrain.Font = Enum.Font.Gotham
-StatFromTrain.Text = "From Train: 0"
-StatFromTrain.TextColor3 = Color3.fromRGB(135, 206, 250) -- Light blue
-StatFromTrain.TextXAlignment = Enum.TextXAlignment.Left
-StatFromTrain.TextSize = 14
-
--- Stat: Time
-StatTime.Name = "StatTime"
-StatTime.Parent = StatsFrame
-StatTime.BackgroundTransparency = 1
-StatTime.Position = UDim2.new(0, 10, 0, 130)
-StatTime.Size = UDim2.new(1, -20, 0, 25)
-StatTime.Font = Enum.Font.Gotham
-StatTime.Text = "Time: 00:00:00"
-StatTime.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatTime.TextXAlignment = Enum.TextXAlignment.Left
-StatTime.TextSize = 14
-
--- // GUI LOGIC \\ --
-
+-- // GUI LOGIC UPDATE \\ --
 ToggleButton.MouseButton1Click:Connect(function()
     getgenv().g_autofarmgingerbread = not getgenv().g_autofarmgingerbread
     
     if getgenv().g_autofarmgingerbread then
         ToggleButton.Text = "STOP FARMING"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) 
+        ToggleButton.BackgroundColor3 = THEME.Success
     else
         ToggleButton.Text = "START FARMING"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) 
+        ToggleButton.BackgroundColor3 = THEME.Fail
     end
 end)
 
@@ -269,7 +259,6 @@ WebhookInput.FocusLost:Connect(function()
         print("Webhook URL updated!")
     end
 end)
-
 
 -- // ANTI-AFK \\ --
 player.Idled:Connect(function()
@@ -332,28 +321,39 @@ local function sendWebhook(amountText, gainedText)
     local requestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
     
     if requestFunc then
-        requestFunc({
-            Url = webhookUrl,
-            Method = "POST", 
-            Headers = { ['Content-Type'] = 'application/json' },
-            Body = HttpService:JSONEncode({
-                ['content'] = "",
-                ['embeds'] = {{
-                    ["title"] = "Gingerbread Status",
-                    ["description"] = "Currency & Time Update",
-                    ["type"] = "rich",
-                    ["color"] = tonumber(0xffA500), 
-                    ["fields"] = {
-                        { ["name"] = "Current Total", ["value"] = tostring(amountText), ["inline"] = true },
-                        { ["name"] = "Gained (Session)", ["value"] = tostring(gainedText), ["inline"] = true },
-                        { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
-                        { ["name"] = "🚂 From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
-                        { ["name"] = "Time Elapsed", ["value"] = timeString, ["inline"] = false }
-                    },
-                    ["footer"] = { ["text"] = "Auto-Farm Script" }
-                }}
+        local embedData = {
+            ["title"] = "🍪 Gingerbread Farm Status",
+            ["description"] = "Running on **Adopt Me!**",
+            ["color"] = tonumber(0xFFA500), -- Orange
+            ["thumbnail"] = {
+                ["url"] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png" -- Generic Adopt Me or Gingerbread icon
+            },
+            ["fields"] = {
+                { ["name"] = "💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
+                { ["name"] = "📈 Gained Session", ["value"] = "`+" .. tostring(gainedText) .. "`", ["inline"] = true },
+                { ["name"] = "", ["value"] = "", ["inline"] = false }, -- Empty line force
+                { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
+                { ["name"] = "🚂 From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
+                { ["name"] = "⏱ Time Elapsed", ["value"] = timeString, ["inline"] = false }
+            },
+            ["footer"] = {
+                ["text"] = "Gingerbread Auto-Farm | " .. os.date("%X"),
+                ["icon_url"] = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. player.UserId .. "&width=420&height=420&format=png"
+            }
+        }
+
+        pcall(function()
+            requestFunc({
+                Url = webhookUrl,
+                Method = "POST", 
+                Headers = { ['Content-Type'] = 'application/json' },
+                Body = HttpService:JSONEncode({
+                    ['username'] = "Gingerbread Bot",
+                    ['avatar_url'] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png",
+                    ['embeds'] = { embedData }
+                })
             })
-        })
+        end)
     end
 end
 
