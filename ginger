@@ -336,8 +336,8 @@ local function sendWebhook(amountText, gainedText)
                 ["url"] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png" -- Generic Adopt Me or Gingerbread icon
             },
             ["fields"] = {
-                { ["name"] = "� Username", ["value"] = player.Name, ["inline"] = true },
-                { ["name"] = "�💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
+                { ["name"] = "🙍 Username", ["value"] = player.Name, ["inline"] = true },
+                { ["name"] = "💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
                 { ["name"] = "📈 Gained Session", ["value"] = "`+" .. tostring(gainedText) .. "`", ["inline"] = true },
                 { ["name"] = "", ["value"] = "", ["inline"] = false }, -- Empty line force
                 { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
