@@ -6,8 +6,26 @@ local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 
-local mainMap = Interiors:WaitForChild("MainMap!Christmas")
+local mainMap = nil
+task.spawn(function()
+    local success, result = pcall(function() return Interiors:WaitForChild("MainMap!Christmas", 5) end)
+    if success and result then
+        mainMap = result
+        print("MainMap found and loaded!")
+    else
+        warn("MainMap!Christmas not found immediately. Searching alternatives...")
+        for _, child in pairs(Interiors:GetChildren()) do
+            if child.Name:find("MainMap") then
+                mainMap = child
+                print("Found map: " .. child.Name)
+                break
+            end
+        end
+    end
+end)
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
@@ -93,14 +111,14 @@ local function jumpOutTrain()
 end
 
 local function hasGingerbreadAvailable()
-    for _, d in ipairs(mainMap:GetDescendants()) do
-        if d.Name == "GingerbreadRig" then
-            local gbm = d:FindFirstChild("GingerbreadMan", true)
-            if gbm and gbm.Parent then
-                return true
-            end
+    if not mainMap then return false end
+    
+    for _, item in pairs(mainMap:GetDescendants()) do
+        if item.Name == "GingerbreadMan" then
+            return true
         end
     end
+    
     return false
 end
 
@@ -140,6 +158,8 @@ end
 
 ScreenGui.Name = "GingerbreadFarmGUI"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true 
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Constants for Theme
 local THEME = {
@@ -159,6 +179,7 @@ MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
 MainFrame.Size = UDim2.new(0, 300, 0, 360)
 MainFrame.Active = true
 MainFrame.Draggable = true 
+MainFrame.ZIndex = 105 -- Keep UI above Black Screen
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
 UIStroke.Parent = MainFrame
@@ -171,7 +192,7 @@ Title.Parent = MainFrame
 Title.BackgroundColor3 = THEME.Accent
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "🍪 GINGERBREAD FARM 🍪"
+Title.Text = "GINGERBREAD FARM"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 TitleCorner.CornerRadius = UDim.new(0, 10)
@@ -241,11 +262,189 @@ local function createStatLabel(name, text, posY, color)
     return label
 end
 
-StatCurrent = createStatLabel("StatCurrent", "💰 Current: N/A", 10, Color3.fromRGB(255, 215, 0))
-StatSession = createStatLabel("StatSession", "📈 Gained: 0", 40, Color3.fromRGB(0, 255, 127))
-StatFromCollection = createStatLabel("StatFromCollection", "🍪 From Collection: 0", 70, Color3.fromRGB(255, 160, 122))
-StatFromTrain = createStatLabel("StatFromTrain", "🚂 From Train: 0", 100, Color3.fromRGB(135, 206, 250))
-StatTime = createStatLabel("StatTime", "⏱ Time: 00:00:00", 140, Color3.fromRGB(200, 200, 200))
+StatCurrent = createStatLabel("StatCurrent", "Current: N/A", 10, Color3.fromRGB(255, 215, 0))
+StatSession = createStatLabel("StatSession", "Gained: 0", 40, Color3.fromRGB(0, 255, 127))
+StatFromCollection = createStatLabel("StatFromCollection", "From Collection: 0", 70, Color3.fromRGB(255, 160, 122))
+StatFromTrain = createStatLabel("StatFromTrain", "From Train: 0", 100, Color3.fromRGB(135, 206, 250))
+StatTime = createStatLabel("StatTime", "Time: 00:00:00", 140, Color3.fromRGB(200, 200, 200))
+
+-- // CPU LIMITER & SETTINGS UI \\ --
+local SettingsOpen = false
+
+-- Settings Button
+local SettingsBtn = Instance.new("TextButton")
+SettingsBtn.Name = "SettingsBtn"
+SettingsBtn.Parent = MainFrame
+SettingsBtn.BackgroundColor3 = THEME.Secondary
+SettingsBtn.Position = UDim2.new(0.85, 0, 0, 5) 
+SettingsBtn.Size = UDim2.new(0, 30, 0, 30)
+SettingsBtn.Font = Enum.Font.GothamBold
+SettingsBtn.Text = "S"
+SettingsBtn.TextColor3 = THEME.Text
+SettingsBtn.TextSize = 20
+SettingsBtn.ZIndex = 106 -- Ensure on top
+Instance.new("UICorner", SettingsBtn).CornerRadius = UDim.new(0, 6)
+
+-- Limiter Frame
+local LimiterFrame = Instance.new("Frame")
+LimiterFrame.Name = "LimiterFrame"
+LimiterFrame.Parent = MainFrame -- Docked to MainFrame
+LimiterFrame.BackgroundColor3 = THEME.Background
+LimiterFrame.Position = UDim2.new(1, 10, 0, 0) -- Attached to right side
+LimiterFrame.Size = UDim2.new(0, 200, 0, 220)
+LimiterFrame.Visible = false
+LimiterFrame.ZIndex = 106 -- Keep Settings above Black Screen
+Instance.new("UICorner", LimiterFrame).CornerRadius = UDim.new(0, 10)
+local LimiterStroke = Instance.new("UIStroke")
+LimiterStroke.Parent = LimiterFrame
+LimiterStroke.Color = THEME.Accent
+LimiterStroke.Thickness = 2
+
+local LimiterTitle = Instance.new("TextLabel")
+LimiterTitle.Parent = LimiterFrame
+LimiterTitle.BackgroundTransparency = 1
+LimiterTitle.Size = UDim2.new(1, 0, 0, 40)
+LimiterTitle.Font = Enum.Font.GothamBold
+LimiterTitle.Text = "CPU SETTINGS"
+LimiterTitle.TextColor3 = THEME.Text
+LimiterTitle.TextSize = 16
+
+-- Black Screen Toggle
+local BlackScreenBtn = Instance.new("TextButton")
+BlackScreenBtn.Name = "BlackScreenBtn"
+BlackScreenBtn.Parent = LimiterFrame
+BlackScreenBtn.BackgroundColor3 = THEME.Secondary
+BlackScreenBtn.Position = UDim2.new(0.1, 0, 0.2, 0)
+BlackScreenBtn.Size = UDim2.new(0.8, 0, 0, 40)
+BlackScreenBtn.Font = Enum.Font.GothamSemibold
+BlackScreenBtn.Text = "Low Power Mode\n(OFF)"
+BlackScreenBtn.TextColor3 = THEME.Text
+BlackScreenBtn.TextSize = 12
+Instance.new("UICorner", BlackScreenBtn).CornerRadius = UDim.new(0, 8)
+
+-- FPS Slider
+local SliderLabel = Instance.new("TextLabel")
+SliderLabel.Parent = LimiterFrame
+SliderLabel.BackgroundTransparency = 1
+SliderLabel.Position = UDim2.new(0.1, 0, 0.45, 0)
+SliderLabel.Size = UDim2.new(0.8, 0, 0, 20)
+SliderLabel.Font = Enum.Font.Gotham
+SliderLabel.Text = "FPS Limit: 10"
+SliderLabel.TextColor3 = THEME.Text
+SliderLabel.TextSize = 14
+SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local SliderBg = Instance.new("Frame")
+SliderBg.Name = "SliderBg"
+SliderBg.Parent = LimiterFrame
+SliderBg.BackgroundColor3 = THEME.Secondary
+SliderBg.Position = UDim2.new(0.1, 0, 0.55, 0)
+SliderBg.Size = UDim2.new(0.8, 0, 0, 8)
+Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
+
+local SliderBtn = Instance.new("TextButton")
+SliderBtn.Name = "SliderBtn"
+SliderBtn.Parent = SliderBg
+SliderBtn.BackgroundColor3 = THEME.Accent
+SliderBtn.Position = UDim2.new(9/59, -8, 0.5, -8) -- Start at 10 FPS
+SliderBtn.Size = UDim2.new(0, 16, 0, 16)
+SliderBtn.Text = ""
+Instance.new("UICorner", SliderBtn).CornerRadius = UDim.new(1, 0)
+
+-- Black Overlay
+local BlackOverlay = Instance.new("Frame")
+BlackOverlay.Name = "BlackOverlay"
+BlackOverlay.Parent = ScreenGui
+BlackOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+BlackOverlay.Size = UDim2.new(1, 0, 1, 0)
+BlackOverlay.Visible = false
+BlackOverlay.ZIndex = 100
+local BlackOverlayText = Instance.new("TextLabel")
+BlackOverlayText.Parent = BlackOverlay
+BlackOverlayText.BackgroundTransparency = 1
+BlackOverlayText.Size = UDim2.new(1, 0, 1, 0)
+BlackOverlayText.Font = Enum.Font.GothamBold
+BlackOverlayText.Text = "LOW POWER MODE ACTIVE\nTap/Click Center or Toggle to Disable"
+BlackOverlayText.TextColor3 = Color3.fromRGB(150, 150, 150)
+BlackOverlayText.TextSize = 24
+
+local OverlayButton = Instance.new("TextButton") -- Invisible button to toggle off
+OverlayButton.Parent = BlackOverlay
+OverlayButton.BackgroundTransparency = 1
+OverlayButton.Size = UDim2.new(1,0,1,0)
+OverlayButton.Text = ""
+OverlayButton.ZIndex = 101
+
+-- // LOGIC FOR CPU LIMITER \\ --
+
+-- Toggle Settings Panel
+SettingsBtn.MouseButton1Click:Connect(function()
+    SettingsOpen = not SettingsOpen
+    LimiterFrame.Visible = SettingsOpen
+end)
+
+-- FPS Slider
+local draggingSlider = false
+local currentFPSLimit = 10
+
+local function updateSlider(input)
+    local sliderX = SliderBg.AbsolutePosition.X
+    local sliderWidth = SliderBg.AbsoluteSize.X
+    local inputX = input.Position.X
+    
+    local relativeX = math.clamp((inputX - sliderX) / sliderWidth, 0, 1)
+    
+    SliderBtn.Position = UDim2.new(relativeX, -8, 0.5, -8)
+    
+    local fps = math.floor((relativeX * 59) + 1)
+    currentFPSLimit = fps
+    SliderLabel.Text = "FPS Limit: " .. tostring(fps)
+    
+    if isLowPower and setfpscap then 
+        setfpscap(fps) 
+    end
+end
+
+SliderBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = true
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(input)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSlider = false
+    end
+end)
+
+-- Low Power Mode
+local isLowPower = false
+local function toggleLowPower()
+    isLowPower = not isLowPower
+    BlackScreenBtn.Text = isLowPower and "Low Power Mode\n(ON)" or "Low Power Mode\n(OFF)"
+    BlackScreenBtn.BackgroundColor3 = isLowPower and THEME.Success or THEME.Secondary
+    BlackOverlay.Visible = isLowPower
+    
+    if isLowPower then
+        -- Enable Low Power
+        pcall(function() RunService:Set3dRenderingEnabled(false) end)
+        if setfpscap then setfpscap(currentFPSLimit) end 
+        
+    else
+        -- Disable Low Power
+        pcall(function() RunService:Set3dRenderingEnabled(true) end)
+        if setfpscap then setfpscap(60) end -- Restore to standard 60
+    end
+end
+
+BlackScreenBtn.MouseButton1Click:Connect(toggleLowPower)
+OverlayButton.MouseButton1Click:Connect(toggleLowPower)
 
 -- // GUI LOGIC UPDATE \\ --
 ToggleButton.MouseButton1Click:Connect(function()
@@ -257,6 +456,32 @@ ToggleButton.MouseButton1Click:Connect(function()
     else
         ToggleButton.Text = "START FARMING"
         ToggleButton.BackgroundColor3 = THEME.Fail
+    end
+end)
+
+WebHookInput = Instance.new("TextBox") -- Fix reference if needed, but context is fine.
+
+-- // KEYBINDS \\ --
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.E then
+        -- Toggle Farm
+        getgenv().g_autofarmgingerbread = not getgenv().g_autofarmgingerbread
+        
+        if getgenv().g_autofarmgingerbread then
+            ToggleButton.Text = "STOP FARMING"
+            ToggleButton.BackgroundColor3 = THEME.Success
+        else
+            ToggleButton.Text = "START FARMING"
+            ToggleButton.BackgroundColor3 = THEME.Fail
+        end
+        
+    elseif input.KeyCode == Enum.KeyCode.T then
+        -- Toggle CPU Limiter (Low Power Mode)
+        if toggleLowPower then
+            toggleLowPower()
+        end
     end
 end)
 
@@ -291,6 +516,7 @@ local function getCFrame(obj)
 end
 
 local function rescanForNext()
+    if not mainMap then return nil end
     for _, d in ipairs(mainMap:GetDescendants()) do
         if d.Name == "GingerbreadRig" then
             local gbm = d:FindFirstChild("GingerbreadMan", true)
@@ -329,20 +555,20 @@ local function sendWebhook(amountText, gainedText)
     
     if requestFunc then
         local embedData = {
-            ["title"] = "🍪 Gingerbread Farm Status",
-            ["description"] = "Running on **Adopt Me!**",
+            ["title"] = "Gingerbread Farm Status",
+            ["description"] = "Running on Adopt Me!",
             ["color"] = tonumber(0xFFA500), -- Orange
             ["thumbnail"] = {
-                ["url"] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png" -- Generic Adopt Me or Gingerbread icon
+                ["url"] = "https://tr.rbxcdn.com/1d5b3064e62817351631525287313045/150/150/Image/Png"
             },
             ["fields"] = {
-                { ["name"] = "🙍 Username", ["value"] = player.Name, ["inline"] = true },
-                { ["name"] = "💰 Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
-                { ["name"] = "📈 Gained Session", ["value"] = "`+" .. tostring(gainedText) .. "`", ["inline"] = true },
-                { ["name"] = "", ["value"] = "", ["inline"] = false }, -- Empty line force
-                { ["name"] = "🍪 From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
-                { ["name"] = "🚂 From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
-                { ["name"] = "⏱ Time Elapsed", ["value"] = timeString, ["inline"] = false }
+                { ["name"] = "Username", ["value"] = player.Name, ["inline"] = true },
+                { ["name"] = "Current Total", ["value"] = "`" .. tostring(amountText) .. "`", ["inline"] = true },
+                { ["name"] = "Gained Session", ["value"] = "`+" .. tostring(gainedText) .. "`", ["inline"] = true },
+                { ["name"] = "", ["value"] = "", ["inline"] = false },
+                { ["name"] = "From Collection", ["value"] = tostring(gainedFromCollection), ["inline"] = true },
+                { ["name"] = "From Train", ["value"] = tostring(gainedFromTrain), ["inline"] = true },
+                { ["name"] = "Time Elapsed", ["value"] = timeString, ["inline"] = false }
             },
             ["footer"] = {
                 ["text"] = "Gingerbread Auto-Farm | " .. os.date("%X"),
